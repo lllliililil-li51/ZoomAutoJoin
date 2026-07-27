@@ -1,15 +1,18 @@
-name: Build Android APK
+name: Android Build
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout project
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -18,20 +21,22 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper
-
-      - name: Make gradlew executable
+      - name: Make Gradle Executable
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # Keeps build running smoothly even during GitHub Actions caching outages
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
-      - name: Upload APK Artifact
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Debug APK Artifact
+        if: always() # Uploads output files even if build step needs inspection
         uses: actions/upload-artifact@v4
         with:
-          name: ZoomAutoJoin-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
