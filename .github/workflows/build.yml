@@ -21,30 +21,36 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Prepare Gradle Wrapper
+      - name: Prepare Gradle Wrapper & Fix Line Endings
         run: |
-          # Find gradlew file anywhere in the project tree
           GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
 
           if [ -z "$GRADLEW_PATH" ]; then
-            echo "gradlew wrapper missing from repository! Generating a new wrapper..."
-            gradle wrapper
+            echo "Gradle wrapper missing. Generating new wrapper..."
+            gradle wrapper --gradle-version 8.10.2
             GRADLEW_PATH="./gradlew"
           fi
 
-          echo "Found gradlew at: $GRADLEW_PATH"
           sed -i 's/\r$//' "$GRADLEW_PATH"
           chmod +x "$GRADLEW_PATH"
+
+      - name: Enforce AGP-Compatible Gradle Version
+        run: |
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
+          cd "$PROJECT_DIR"
+
+          # Downgrades wrapper to stable 8.10.2 so DataBinding works without mutating errors
+          ./gradlew wrapper --gradle-version 8.10.2
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Debug APK
         run: |
-          # Navigate to where gradlew lives and execute assembleDebug
           GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
           PROJECT_DIR=$(dirname "$GRADLEW_PATH")
-          
+
           cd "$PROJECT_DIR"
           ./gradlew assembleDebug --stacktrace
 
