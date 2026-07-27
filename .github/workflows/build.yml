@@ -2,17 +2,17 @@ name: Android Build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main" ]
-  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -21,20 +21,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Make Gradle Executable
-        run: chmod +x gradlew
+      - name: Fix gradlew line endings and permissions
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          # Keeps build running smoothly even during GitHub Actions caching outages
-          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload Debug APK Artifact
-        if: always() # Uploads output files even if build step needs inspection
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
