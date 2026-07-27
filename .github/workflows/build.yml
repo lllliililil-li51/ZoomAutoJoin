@@ -21,21 +21,37 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Fix gradlew line endings and permissions
+      - name: Prepare Gradle Wrapper
         run: |
-          sed -i 's/\r$//' gradlew
-          chmod +x gradlew
+          # Find gradlew file anywhere in the project tree
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "gradlew wrapper missing from repository! Generating a new wrapper..."
+            gradle wrapper
+            GRADLEW_PATH="./gradlew"
+          fi
+
+          echo "Found gradlew at: $GRADLEW_PATH"
+          sed -i 's/\r$//' "$GRADLEW_PATH"
+          chmod +x "$GRADLEW_PATH"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          # Navigate to where gradlew lives and execute assembleDebug
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
+          
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload Debug APK Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
           if-no-files-found: ignore
